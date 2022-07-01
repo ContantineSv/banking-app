@@ -1,0 +1,3 @@
+inorder traversal: traverse the left subtree, visit the root, traverse the right subtree
+preorder  traversal: visit the root, traverse the left subtree, traverse the right subtree
+postorder: traverse the left subtree, traverse the right subtree visit the root 
