@@ -3,6 +3,7 @@
 #include <vector>
 #include <set>
 #include <string>
+#include <mutex>
 
 enum class Type
 {
@@ -13,7 +14,18 @@ enum class Type
 class Database
 {
 public:
+    static Database& getInstance()
+    {
+        static Database instance;
+        return instance;
+    }
+    
+    Database(Database const&) = delete;
+    void operator=(Database const&)  = delete;
+
+    // get data from database
     void initialize(std::string users_data, std::string accounts_data);
+    // store data to database
     void store(std::string user_data, std::string account_data);
     // return 0 if Ok, 1 if user already exists,
     // 2 if passwords dont match
@@ -37,6 +49,7 @@ public:
     // return -1 if fail
     int32_t getUserByLogin(std::string login) const
     {
+        std::lock_guard<std::mutex> l(_mtx);
         if (!login_to_user.count(login))
             return -1;
         return login_to_user.at(login);
@@ -45,6 +58,7 @@ public:
     // 0 - ok , 1 - user does not exist, 2 - invalid password
     uint16_t login(std::string login, std::string password)
     {
+        std::lock_guard<std::mutex> l(_mtx);
         if (login_to_user.count(login) == 0)
             return 1;
         if (users.at(login_to_user.at(login)).password != password)
@@ -53,6 +67,7 @@ public:
     }
     // get account numbers for an user
     std::vector<int32_t> getUsersAccounts(int32_t user_id){
+        std::lock_guard<std::mutex> l(_mtx);
         if (!user_to_accounts.count(user_id))
             return std::vector<int32_t>();
         std::set<int32_t>& accounts = user_to_accounts.at(user_id);
@@ -62,6 +77,8 @@ public:
 
 
 private:
+    Database() = default;
+
     struct User
     {
         int32_t id;
@@ -87,5 +104,7 @@ private:
     std::map<int32_t, std::set<int32_t>> user_to_accounts;
     std::map <std::string, int32_t> login_to_user;
     int32_t user_id_offset = 0;
-    int32_t account_id_offset = 0; 
+    int32_t account_id_offset = 0;
+
+    mutable std::mutex _mtx; 
 };

@@ -1,7 +1,12 @@
 #include "database.h"
-#include <iostream>
-#include <fstream>
 #include <cstring>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <mutex>
+#include <set>
+#include <string>
+#include <vector>
 
 using namespace std;
 
@@ -70,6 +75,7 @@ void Database::getAccounts(string file)
 
 void Database::initialize(string users_data, string accounts_data)
 {
+    std::lock_guard<std::mutex> l(_mtx);
     getUsers(users_data);
     getAccounts(accounts_data);
 }
@@ -92,7 +98,7 @@ void Database::storeUsers(string data)
 }
 
 void Database::storeAccounts(string data)
-{
+{   
     ofstream output;
     output.open(data, ios::out | ios::binary);
     if (!output.is_open())
@@ -110,6 +116,7 @@ void Database::storeAccounts(string data)
 
 void Database::store(string users_data, string accounts_data)
 {
+    std::lock_guard<std::mutex> l(_mtx);
     storeUsers(users_data);
     storeAccounts(accounts_data);
 }
@@ -117,6 +124,7 @@ void Database::store(string users_data, string accounts_data)
 
 uint16_t Database::addUser(string log, string pass, string confirm)
 {   
+    std::lock_guard<std::mutex> l(_mtx);
     // check if passwords match
     if (pass != confirm)
         return 2;
@@ -138,6 +146,7 @@ uint16_t Database::addUser(string log, string pass, string confirm)
 
 uint16_t Database::addAccount(int32_t user_id, Type type)
 {   
+    std::lock_guard<std::mutex> l(_mtx);
     if (!users.count(user_id))
         return 1;
     Account account{account_id_offset, user_id, type, 0};
@@ -148,6 +157,7 @@ uint16_t Database::addAccount(int32_t user_id, Type type)
 
 uint16_t Database::closeAccount(int32_t account_id)
 {
+    std::lock_guard<std::mutex> l(_mtx);
     if (!accounts.count(account_id))
         return 1;
     user_to_accounts.at(accounts[account_id].owner).erase(account_id);
@@ -157,6 +167,7 @@ uint16_t Database::closeAccount(int32_t account_id)
 
 uint16_t Database::deposit(int32_t account_id, int32_t ammount)
 {
+    std::lock_guard<std::mutex> l(_mtx);
     if (!accounts.count(account_id))
         return 1;
     accounts[account_id].balance += ammount;
@@ -165,6 +176,7 @@ uint16_t Database::deposit(int32_t account_id, int32_t ammount)
 
 uint16_t Database::withdraw(int32_t account_id, int32_t ammount)
 {
+    std::lock_guard<std::mutex> l(_mtx);
     if (!accounts.count(account_id))
         return 1;
     if (accounts[account_id].balance < ammount)
@@ -175,6 +187,7 @@ uint16_t Database::withdraw(int32_t account_id, int32_t ammount)
 
 uint16_t Database::transfer(int32_t origin_id, int32_t destination_id, int32_t amount)
 {
+    std::lock_guard<std::mutex> l(_mtx);
     if (!accounts.count(origin_id))
         return 1;
     if (!accounts.count(destination_id))

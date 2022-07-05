@@ -198,7 +198,7 @@ int main(int argc, char * argv[])
 	addr_size = sizeof client_addr;
 
 	// database setup
-	Database data;
+	Database& data = Database::getInstance();
 	data.initialize(USERS, ACCOUNTS);
 	// exit thread;
 	std::thread cleanup (
