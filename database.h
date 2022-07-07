@@ -5,12 +5,6 @@
 #include <string>
 #include <mutex>
 
-enum class Type
-{
-    saving,
-    cheking
-};
-
 class Database
 {
 public:
@@ -19,7 +13,7 @@ public:
         static Database instance;
         return instance;
     }
-    
+
     Database(Database const&) = delete;
     void operator=(Database const&)  = delete;
 
@@ -31,7 +25,7 @@ public:
     // 2 if passwords dont match
     uint16_t addUser(std::string log, std::string pass , std::string confirm);
     // returns account number if OK and -1 if user doesn't exist
-    uint16_t addAccount(int32_t user_id, Type type);
+    uint16_t addAccount(int32_t user_id);
     // returns 1 if OK and 0 if doesn't exist;
     uint16_t closeAccount(int32_t account_id);
     // returns 0 if OK and 1 if account doesn't exist
@@ -56,7 +50,7 @@ public:
     }
 
     // 0 - ok , 1 - user does not exist, 2 - invalid password
-    uint16_t login(std::string login, std::string password)
+    uint16_t login(std::string login, std::string password) const
     {
         std::lock_guard<std::mutex> l(_mtx);
         if (login_to_user.count(login) == 0)
@@ -66,11 +60,12 @@ public:
         else return 0;
     }
     // get account numbers for an user
-    std::vector<int32_t> getUsersAccounts(int32_t user_id){
+    std::vector<int32_t> getUsersAccounts(int32_t user_id) const
+    {
         std::lock_guard<std::mutex> l(_mtx);
         if (!user_to_accounts.count(user_id))
             return std::vector<int32_t>();
-        std::set<int32_t>& accounts = user_to_accounts.at(user_id);
+        std::set<int32_t> accounts = user_to_accounts.at(user_id);
         return std::vector<int32_t> (accounts.begin(), accounts.end());
     }
 
@@ -90,7 +85,6 @@ private:
     {
         int32_t id;
         int32_t owner;
-        Type type;
         int32_t balance; 
     };
 

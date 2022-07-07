@@ -97,7 +97,7 @@ void Database::storeUsers(string data)
     output.close();
 }
 
-void Database::storeAccounts(string data)
+void Database::storeAccounts(string data) 
 {   
     ofstream output;
     output.open(data, ios::out | ios::binary);
@@ -144,12 +144,12 @@ uint16_t Database::addUser(string log, string pass, string confirm)
     return 0;
 }
 
-uint16_t Database::addAccount(int32_t user_id, Type type)
+uint16_t Database::addAccount(int32_t user_id)
 {   
     std::lock_guard<std::mutex> l(_mtx);
     if (!users.count(user_id))
         return 1;
-    Account account{account_id_offset, user_id, type, 0};
+    Account account{account_id_offset, user_id, 0};
     accounts[account.id] = account;
     user_to_accounts[user_id].insert(account.id);
     return account_id_offset++;

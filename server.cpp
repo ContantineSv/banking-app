@@ -26,6 +26,19 @@ enum class Mode
 	exit,
 };
 
+void sendAccounts(const Database& data, int socket, int32_t user)
+{
+   std::vector<int32_t> accounts = data.getUsersAccounts(user);
+   uint16_t number = accounts.size();
+   number = htons(number);
+   send(socket, reinterpret_cast<char*>(&number), sizeof(number), 0);
+   for (size_t i = 0; i < accounts.size(); ++i)
+   {    
+        std::cout << accounts[i] << std::endl;
+        int32_t account = htonl(accounts[i]);
+        send(socket, reinterpret_cast<char*>(&account), sizeof(account), 0);
+   }
+}
 
 void handle (int client_socket, Database& data){
 	char buff[20];
@@ -62,16 +75,8 @@ void handle (int client_socket, Database& data){
 					if (response == 0){
 						user = data.getUserByLogin(login);
 						mode = Mode::logged_in;
-						// send account list;
-						std::vector<int32_t> accounts = data.getUsersAccounts(user);
-						uint16_t number = accounts.size();
-						number = htons(number);
-						send(client_socket, reinterpret_cast<char*>(&number), sizeof(number), 0);
-						for (size_t i = 0; i < accounts.size(); ++i)
-						{	
-							int32_t account = htonl(accounts[i]);
-							send(client_socket, reinterpret_cast<char*>(&account), sizeof(account), 0);
-						}
+						// send accounts
+						sendAccounts(data, client_socket, user);
 					}
 
 					break;
@@ -115,6 +120,26 @@ void handle (int client_socket, Database& data){
 				{
 					user = -1;
 					mode = Mode::logged_off;
+					break;
+				}
+				// add account
+				case 3:
+				{
+					data.addAccount(user);
+					sendAccounts(data, client_socket, user);
+					break;
+				}
+				// close account
+				case 4: 
+				{
+					int32_t account_n;
+					if (recv(client_socket, reinterpret_cast<char*> (&account_n), sizeof(account_n), 0) <= 0)
+						break;
+					account_n = ntohl(account_n);
+					uint16_t response = data.closeAccount(account_n);
+					response = htons(response);
+					send(client_socket, reinterpret_cast<char*>(&response), sizeof(response), 0);
+					sendAccounts(data, client_socket, user);
 					break;
 				}
             }

@@ -12,6 +12,8 @@
 #include <arpa/inet.h>
 #endif
 
+#include <errno.h>
+
 #define PORT 8888
 
 enum class Mode
@@ -39,17 +41,25 @@ void pressAnyKeyToContinue()
 #endif
 }
 
+void printAccounts(const std::vector<int32_t>& accounts)
+{
+    for (const auto& account : accounts)
+    {
+        std:: cout << account << '\n';
+    }
+}
+
 std::vector<int32_t> getAccounts(int socket)
 {
     uint16_t n_accounts;
     std::vector<int32_t> accounts;
     recv(socket, reinterpret_cast<char*>(&n_accounts), sizeof(n_accounts), 0);
-    n_accounts = htons(n_accounts); 
+    n_accounts = ntohs(n_accounts);
     for (uint16_t i = 0; i < n_accounts; ++i)
     {
-        int32_t account;
-        recv(socket, reinterpret_cast<char*>(account), sizeof(account), 0);
-        account = htonl(account);
+        int32_t account = 0;
+        recv(socket, reinterpret_cast<char*>(&account), sizeof(account), 0);
+        account = ntohl(account);
         accounts.push_back(account);
     }
     return accounts;
@@ -57,13 +67,12 @@ std::vector<int32_t> getAccounts(int socket)
 
 void session (int socket)
 {   
-    std::vector<int32_t> accounts;
+    clear_screen();
+    std::vector<int32_t> accounts; 
     Mode mode = Mode::logged_off;
     while(mode != Mode::exit)
     {   
         uint16_t option = 0;
-
-        clear_screen();
         if (mode == Mode::logged_off)
         {
             while (option <= 0 || option >3)
@@ -97,9 +106,9 @@ void session (int socket)
                     // get accounts if logged in and set the mode to logged in;
                     if (response == 0)
                     {
-                        accounts = getAccounts(socket);
                         mode = Mode::logged_in;
                         std::cout << "Login successful\n";
+                        accounts = getAccounts(socket);
                     }
                     else if (response == 1)
                     {
@@ -110,6 +119,7 @@ void session (int socket)
                         std::cout << "Incorrect password ";
                     }
                     pressAnyKeyToContinue();
+                    clear_screen();
                     break;
                 }
                 case 2:
@@ -140,6 +150,7 @@ void session (int socket)
                         std::cout << "Passwords don't match ";
                     }
                     pressAnyKeyToContinue();
+                    clear_screen();
                     break;   
                 }
                 case 3:
@@ -152,10 +163,13 @@ void session (int socket)
         }
         else if (mode == Mode::logged_in)
         {
+            std::cout << " Your account list:" << '\n';
+            printAccounts(accounts);
             std::cout << "1. Exit" << '\n';
             std::cout << "2. Log out" << '\n';
-            std::cout << " Your account list:" << '\n';
-            while (option <=0 || option > 2)
+            std::cout << "3. Add account" << '\n';
+            std::cout << "4. Delete account" << '\n'; 
+            while (option <=0 || option > 4)
             {
                 std::cin >> option;
             }
@@ -167,17 +181,48 @@ void session (int socket)
             send(socket, reinterpret_cast<char*>(&option), sizeof(option), 0);
             option = ntohs(option);
             switch (option){
+                // exit
                 case 1:
                 {
                     mode = Mode::exit;
                     break;
                 }
+                // login
                 case 2:
                 {
                     mode = Mode::logged_off;
                     break;
                 }
+                // add account
+                case 3:
+                {   
+                    accounts = getAccounts(socket);
+                    break;
+                }
+                // delete account
+                case 4:
+                {
+                    std::cout << "Inter account number to delete ";
+                    int32_t account_n;
+                    std::cin >> account_n;
+                    account_n = htonl(account_n);
+                    send(socket, reinterpret_cast<char*>(&account_n), sizeof(account_n), 0);
+                    uint16_t response = -1;
+                    recv(socket, reinterpret_cast<char*>(&response), sizeof(response), 0);
+                    if (response == 0)
+                    {
+                        std::cout << "The account has been deleted\n"; 
+                    }
+                    else
+                    {
+                        std::cout << "The account specified does not exist\n";
+                    }
+                    accounts = getAccounts(socket);
+                    pressAnyKeyToContinue();
+                    break;
+                }
             }
+            clear_screen();
         }
     }
 }
